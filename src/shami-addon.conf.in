@@ -1,0 +1,16 @@
+[Addon]
+Name=Shami
+Category=InputMethod
+Version=1.0.0
+Library=shami
+Type=SharedLibrary
+OnDemand=True
+Configurable=True
+
+[Addon/Dependencies]
+0=punctuation
+
+[Addon/OptionalDependencies]
+0=fullwidth
+1=quickphrase
+2=chttrans
