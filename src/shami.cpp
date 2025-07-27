@@ -18,7 +18,7 @@ static const std::array<fcitx::Key, WORDS_PER_PAGE> selectionKeys = {
     fcitx::Key{FcitxKey_0}
 };
 
-static const std::string boshiamyKeys = "abcdefghijklmnopqrstuvwxyz[]";
+static const std::string boshiamyKeys = ";\',.[]abcdefghijklmnopqrstuvwxyz";
 
 bool isBoshiamyKey(fcitx::KeyEvent &event) {
 	return event.key().isSimple() && 
@@ -122,8 +122,8 @@ public:
 	}
 private:
 	void generate() {
-		all_ = BoshiamyData::get_typed_word(text_);
-		FCITX_INFO() << "#candidates = " << all_.size();
+		all_ = BoshiamyData::get_typed_words(text_);
+		//FCITX_INFO() << "#candidates = " << all_.size();
 		assert(!all_.empty());
 		updateCandidateList();
 		return;
@@ -142,11 +142,11 @@ private:
 }
 
 bool ShamiState::handleCandidateKeyEvent(fcitx::KeyEvent &event) {
-	FCITX_INFO() << "handling candidate key event";
+	//FCITX_INFO() << "handling candidate key event";
 	auto candidateList = ic_ -> inputPanel().candidateList();
-	FCITX_INFO() << "get candidate list";
+	//FCITX_INFO() << "get candidate list";
 	if (!candidateList) return false;
-	FCITX_INFO() << "candidate list not empty";
+	//FCITX_INFO() << "candidate list not empty";
 	int idx = event.key().keyListIndex(selectionKeys);
 	if (idx >= 0 && idx < candidateList -> size()) {
 		event.accept();
@@ -210,7 +210,7 @@ void ShamiState::commitBuffer() {
 
 bool ShamiState::handleNormalKeyEvent(fcitx::KeyEvent &event) { // check if handled
 	if (buffer_.empty() && !isBoshiamyKey(event)) return false;
-	FCITX_INFO() << "handling normal key event";
+	//FCITX_INFO() << "handling normal key event";
 	if (event.key().check(FcitxKey_BackSpace)) {
 		buffer_.backspace();
 	} else if (event.key().check(FcitxKey_Return) ||
@@ -235,18 +235,18 @@ void ShamiState::keyEvent(fcitx::KeyEvent &event) { //since both may exist simul
 }
 
 void ShamiState::updateUI() {
-	FCITX_INFO() << "Updating UI";
+	//FCITX_INFO() << "Updating UI";
 	auto &inputPanel = ic_ -> inputPanel();
 	inputPanel.reset();
-	if (!BoshiamyData::get_typed_word(buffer_.userInput()).empty() && !buffer_.empty()) {
+	if (!BoshiamyData::get_typed_words(buffer_.userInput()).empty() && !buffer_.empty()) {
 		int idx = 0;
-		FCITX_INFO() << "entered getting candidate list";
+		//FCITX_INFO() << "entered getting candidate list";
 		if (inputPanel.candidateList() != nullptr) {
 			idx = inputPanel.candidateList() -> cursorIndex();
 		}
-		FCITX_INFO() << "finished getting cursor index";
+		//FCITX_INFO() << "finished getting cursor index";
 		inputPanel.setCandidateList(std::make_unique<ShamiCandidateList>(engine_, ic_, buffer_.userInput()));
-		FCITX_INFO() << "finished candidate list";
+		//FCITX_INFO() << "finished candidate list";
 		// inputPanel.candidateList() -> toCursorModifiable() -> setCursorIndex(idx);
 	}
 	fcitx::Text preedit(buffer_.userInput());
@@ -257,7 +257,7 @@ void ShamiState::updateUI() {
 	inputPanel.setPreedit(preedit);
 	ic_ -> updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 	ic_ -> updatePreedit();
-	FCITX_INFO() << "Finish updating UI";
+	//FCITX_INFO() << "Finish updating UI";
 }
 
 void ShamiEngine::keyEvent(const fcitx::InputMethodEntry& entry, 
