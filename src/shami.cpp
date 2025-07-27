@@ -45,12 +45,12 @@ private:
 
 
 // Only works if there exists at least one candidate!!!
-class ShamiCandidateList: public fcitx::CandidateList,
+class ShamiBoshiamyCandidateList: public fcitx::CandidateList,
 						  public fcitx::PageableCandidateList, 
 						  public fcitx::CursorMovableCandidateList, 
 						  public fcitx::CursorModifiableCandidateList {
 public:
-	ShamiCandidateList(ShamiEngine* engine, fcitx::InputContext* ic,
+	ShamiBoshiamyCandidateList(ShamiEngine* engine, fcitx::InputContext* ic,
 			const std::string text): engine_(engine), ic_(ic), text_(text) {
 		setPageable(this);
 		setCursorMovable(this);
@@ -123,7 +123,100 @@ public:
 private:
 	void generate() {
 		all_ = BoshiamyData::get_typed_words(text_);
-		//FCITX_INFO() << "#candidates = " << all_.size();
+		assert(!all_.empty());
+		updateCandidateList();
+		return;
+	}
+	ShamiEngine* engine_;
+	fcitx::InputContext* ic_;
+	std::unique_ptr<ShamiCandidateWord> candidates_[WORDS_PER_PAGE];
+	std::vector<std::string> all_;
+	int ptr_ = 0;
+	int cursor_ = 0;
+	int size_ = 0;
+	std::string text_;
+	fcitx::Text labels_[WORDS_PER_PAGE];
+};
+
+// TODO
+class ShamiChewingCandidateList: public fcitx::CandidateList,
+						  public fcitx::PageableCandidateList, 
+						  public fcitx::CursorMovableCandidateList, 
+						  public fcitx::CursorModifiableCandidateList {
+public:
+	ShamiChewingCandidateList(ShamiEngine* engine, fcitx::InputContext* ic,
+			const std::string text): engine_(engine), ic_(ic), text_(text) {
+		setPageable(this);
+		setCursorMovable(this);
+		setCursorModifiable(this);
+		for(int i = 0;i<WORDS_PER_PAGE;i++) {
+			const char label[2] = {static_cast<char>('0' + (i + 1) % WORDS_PER_PAGE), '\0'};
+			labels_[i].append(label);
+			labels_[i].append(". ");
+		}
+		generate();
+	}
+	const fcitx::Text &label(int idx) const override {
+		return labels_[idx];
+	}
+	const fcitx::CandidateWord& candidate(int idx) const override {
+		return *candidates_[idx];
+	}
+	int size() const override {
+		return size_;
+	}
+	fcitx::CandidateLayoutHint layoutHint() const override {
+		return fcitx::CandidateLayoutHint::Horizontal;
+	}
+	bool usedNextBefore() const override { return false; }
+	void prev() override {
+		if (!hasPrev()) {
+			return;
+		}
+		ptr_ -= WORDS_PER_PAGE;
+		setCursorIndex(0);
+		updateCandidateList();
+	}
+	void next() override {
+		if (!hasNext()) {
+			return;
+		}
+		ptr_ += WORDS_PER_PAGE;
+		setCursorIndex(0);
+		updateCandidateList();
+	}
+	void updateCandidateList() {
+		size_ = 0;
+		for(int i = 0;ptr_ + i < all_.size() && i < WORDS_PER_PAGE;i++, size_++) {
+			candidates_[i] = 
+				std::make_unique<ShamiCandidateWord>(engine_, all_[ptr_ + i]);
+		}
+	}
+	bool hasPrev() const override {
+		if (ptr_ - WORDS_PER_PAGE >= 0) return true;
+		else return false;
+	}
+	bool hasNext() const override {
+		if (ptr_ + WORDS_PER_PAGE < all_.size()) return true;
+		else return false;
+	}
+	void prevCandidate() override {
+		setCursorIndex((cursor_ + size() - 1) % size());
+	}
+	void nextCandidate() override {
+		setCursorIndex((cursor_ + 1) % size());
+	}
+	int cursorIndex() const override {
+		return cursor_;
+	}
+	void setCursorIndex(int idx) {
+		if (idx >= size() || idx < 0) return;
+		cursor_ = idx;
+		return;
+	}
+private:
+	void generate() {
+		all_ = BoshiamyData::get_typed_words(text_);
 		assert(!all_.empty());
 		updateCandidateList();
 		return;
@@ -141,12 +234,28 @@ private:
 
 }
 
+namespace {
+	const int SEL_KEYS[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '0'};
+	const char* CHEWING_DATA_DIR = "/usr/share/libchewing";
+	const char* USER_HOME = getenv("HOME");
+	std::string user_data_dir = std::string(USER_HOME) + "/.local/share/chewing.sqlite3";
+}
+
+void ShamiState::initChewing() {
+	chewing_ctx_ = chewing_new2(CHEWING_DATA_DIR, user_data_dir.c_str(), NULL, 0);
+	if (!chewing_ctx_) {
+		FCITX_INFO() << "error initializing chewing_ctx_";
+		return;
+	}
+	chewing_set_selKey(chewing_ctx_, SEL_KEYS, WORDS_PER_PAGE);
+	chewing_set_maxChiSymbolLen(chewing_ctx_, 10);
+	chewing_set_candPerPage(chewing_ctx_, WORDS_PER_PAGE);
+	chewing_set_ChiEngMode(chewing_ctx_, 1);
+}
+
 bool ShamiState::handleCandidateKeyEvent(fcitx::KeyEvent &event) {
-	//FCITX_INFO() << "handling candidate key event";
 	auto candidateList = ic_ -> inputPanel().candidateList();
-	//FCITX_INFO() << "get candidate list";
 	if (!candidateList) return false;
-	//FCITX_INFO() << "candidate list not empty";
 	int idx = event.key().keyListIndex(selectionKeys);
 	if (idx >= 0 && idx < candidateList -> size()) {
 		event.accept();
@@ -210,7 +319,6 @@ void ShamiState::commitBuffer() {
 
 bool ShamiState::handleNormalKeyEvent(fcitx::KeyEvent &event) { // check if handled
 	if (buffer_.empty() && !isBoshiamyKey(event)) return false;
-	//FCITX_INFO() << "handling normal key event";
 	if (event.key().check(FcitxKey_BackSpace)) {
 		buffer_.backspace();
 	} else if (event.key().check(FcitxKey_Return) ||
@@ -234,22 +342,26 @@ void ShamiState::keyEvent(fcitx::KeyEvent &event) { //since both may exist simul
 		handleCandidateKeyEvent(event);
 }
 
-void ShamiState::updateUI() {
-	//FCITX_INFO() << "Updating UI";
+void ShamiState::updateUI() { 
+	// note that this function resets the input panel, which may cause the cursor in the candidate list to function improperly
+	const static std::string chewing_prefix = "\';";
 	auto &inputPanel = ic_ -> inputPanel();
 	inputPanel.reset();
+	fcitx::Text(preedit);
 	if (!BoshiamyData::get_typed_words(buffer_.userInput()).empty() && !buffer_.empty()) {
-		int idx = 0;
-		//FCITX_INFO() << "entered getting candidate list";
-		if (inputPanel.candidateList() != nullptr) {
-			idx = inputPanel.candidateList() -> cursorIndex();
+		inputPanel.setCandidateList(std::make_unique<ShamiBoshiamyCandidateList>(engine_, ic_, buffer_.userInput()));
+		preedit = fcitx::Text(buffer_.userInput());
+	} 
+	// since "';" is not a valid boshiamy word prefix, we assume that all chewing intentions go to the else-if statement
+	// if (initialization; condition) from C++17
+	else if (std::string buffer_string = buffer_.userInput();
+			buffer_.size() >= chewing_prefix.size() 
+			&& buffer_.substr(0, chewing_prefix.size()) == chewing_prefix) {
+		if (!chewing_cand_CheckDone(chewing_ctx_)) {
+			inputPanel.setCandidateList(std::make_unique<ShamiChewingCandidateList>(engine_, ic_, chewing_ctx_);
 		}
-		//FCITX_INFO() << "finished getting cursor index";
-		inputPanel.setCandidateList(std::make_unique<ShamiCandidateList>(engine_, ic_, buffer_.userInput()));
-		//FCITX_INFO() << "finished candidate list";
-		// inputPanel.candidateList() -> toCursorModifiable() -> setCursorIndex(idx);
+		preedit = fcitx::Text("\';"+std::string(chewing_bopomofo_String_static(chewing_ctx_));
 	}
-	fcitx::Text preedit(buffer_.userInput());
 	if (ic_ -> capabilityFlags().test(fcitx::CapabilityFlag::Preedit)) {
 		preedit = fcitx::Text(buffer_.userInput(), 
 				fcitx::TextFormatFlag::HighLight);
@@ -257,7 +369,6 @@ void ShamiState::updateUI() {
 	inputPanel.setPreedit(preedit);
 	ic_ -> updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 	ic_ -> updatePreedit();
-	//FCITX_INFO() << "Finish updating UI";
 }
 
 void ShamiEngine::keyEvent(const fcitx::InputMethodEntry& entry, 

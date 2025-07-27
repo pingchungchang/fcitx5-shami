@@ -1,9 +1,15 @@
 # Make sure it produce shami.so instead of libshami.so
-add_library(boshiamy_data STATIC boshiamy_data.hpp boshiamy_data.cpp)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CHEWING REQUIRED chewing)
+include_directories(${CHEWING_INCLUDE_DIRS})
+link_directories(${CHEIWNG_LIBRARY_DIRS})
+add_definitions(${CHEWING_CFLAGS_OTHER})
+
+# add_library(boshiamy_data STATIC boshiamy_data.hpp boshiamy_data.cpp)
+add_library(boshiamy_data SHARED boshiamy_data.hpp boshiamy_data.cpp)
 add_library(shami SHARED shami.cpp)
 target_link_libraries(shami 
-	PRIVATE Fcitx5::Core 
-	PRIVATE boshiamy_data)
+	PRIVATE Fcitx5::Core boshiamy_data ${CHEWING_LIBRARIES})
 set_target_properties(shami PROPERTIES PREFIX "")
 install(TARGETS shami DESTINATION "${FCITX_INSTALL_LIBDIR}/fcitx5")
 

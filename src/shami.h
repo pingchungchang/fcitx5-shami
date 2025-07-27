@@ -10,24 +10,36 @@
 #include <fcitx/instance.h>
 #include <fcitx-utils/inputbuffer.h>
 
+#include <chewing.h>
+
 class ShamiEngine;
 
 class ShamiState: public fcitx::InputContextProperty {
 public:
-	ShamiState(ShamiEngine* engine, fcitx::InputContext* ic): engine_(engine), ic_(ic) {}
+	void initChewing();
+	ShamiState(ShamiEngine* engine, fcitx::InputContext* ic): engine_(engine), ic_(ic) {
+		initChewing();
+	}
 	bool handleCandidateKeyEvent(fcitx::KeyEvent &event);
 	bool handleNormalKeyEvent(fcitx::KeyEvent &event);
 	void commitBuffer();
 	void keyEvent(fcitx::KeyEvent &keyEvent);
 	void updateUI();
 	void reset() {
+		chewing_Reset(chewing_ctx_);
 		buffer_.clear();
 		updateUI();
+	}
+	~ShamiState() {
+		if (chewing_ctx_) {
+			chewing_delete(chewing_ctx_);
+		}
 	}
 private:
 	ShamiEngine* engine_;
 	fcitx::InputContext* ic_;
 	fcitx::InputBuffer buffer_{{fcitx::InputBufferOption::AsciiOnly, fcitx::InputBufferOption::FixedCursor}};
+	ChewingContext* chewing_ctx_;
 };
 
 class ShamiEngine : public fcitx::InputMethodEngineV2 {
