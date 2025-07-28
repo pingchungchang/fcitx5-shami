@@ -2,4 +2,5 @@
 - Made just for self usage, and boshiamy data comes from fcitx-table-extra repository.
 - For arch users, please install fcitx5-table-extra, fcitx5-chinese-addons, libchewing, fcitx5 before running ./install.sh to install
 - Candidate list shows the shortest string needed to type the word
-- (compile may need some time due to the super unefficient implementation).- extra feature: type "';" to enter chewing mode, type and choose the word you want while the candidate list shows the shortest way to type the word.
+- (compile may need some time due to the super unefficient implementation).
+- extra feature: type "';" to enter chewing mode, type and choose the word you want while the candidate list shows the shortest way to type the word.
