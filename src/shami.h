@@ -17,11 +17,13 @@ class ShamiEngine;
 class ShamiState: public fcitx::InputContextProperty {
 public:
 	void initChewing();
+	int getTypingMode();
 	ShamiState(ShamiEngine* engine, fcitx::InputContext* ic): engine_(engine), ic_(ic) {
 		initChewing();
 	}
 	bool handleCandidateKeyEvent(fcitx::KeyEvent &event);
-	bool handleNormalKeyEvent(fcitx::KeyEvent &event);
+	bool handleBoshiamyKeyEvent(fcitx::KeyEvent &event);
+	bool handleChewingKeyEvent(fcitx::KeyEvent &event);
 	void commitBuffer();
 	void keyEvent(fcitx::KeyEvent &keyEvent);
 	void updateUI();
