@@ -451,8 +451,8 @@ void ShamiState::updateUI() {
 			inputPanel.setCandidateList(
 					std::make_unique<ShamiBoshiamyCandidateList>(
 						engine_, ic_, buffer_.userInput()));
-			preedit = fcitx::Text(buffer_.userInput());
 		} 
+		preedit = fcitx::Text(buffer_.userInput());
 	}
 	else {
 		FCITX_INFO() << "updating UI with chewing";
